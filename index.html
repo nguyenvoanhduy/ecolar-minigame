@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lật Hình Ecolar – Mini Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#056839;
+    --lime:#BFD730;
+    --ink:#231f20;
+    --bg:#FAFBF7;
+    --muted:#6b6f66;
+    --gap:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:'Nunito Sans',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    height:100vh;height:100dvh;
+    display:flex;flex-direction:column;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* ---------- Thanh trên ---------- */
+  header{
+    flex:none;display:flex;align-items:center;justify-content:space-between;
+    padding:8px 16px;background:var(--green);border-bottom:3px solid var(--lime);
+  }
+  header img{height:34px;width:auto;display:block}
+  header .tag{color:var(--lime);font-weight:800;font-size:.85rem;letter-spacing:.04em}
+
+  /* ---------- Thanh điều khiển ---------- */
+  .toolbar{
+    flex:none;display:flex;align-items:center;justify-content:center;
+    flex-wrap:wrap;gap:8px 16px;padding:10px 16px 4px;
+  }
+  h1{
+    font-weight:800;line-height:1.1;color:var(--green);
+    font-size:clamp(1rem,2.6vw,1.45rem);white-space:nowrap;
+  }
+  h1 span{color:var(--ink)}
+  .levels{display:flex;gap:6px}
+  .lvl{
+    border:2px solid var(--green);background:#fff;color:var(--green);
+    font:700 .8rem 'Nunito Sans',sans-serif;padding:5px 12px;border-radius:999px;cursor:pointer;
+    transition:.15s;white-space:nowrap;
+  }
+  .lvl:hover{background:#f1f7ea}
+  .lvl[aria-pressed="true"]{background:var(--green);color:#fff}
+  .stats{display:flex;gap:6px}
+  .stat{
+    background:var(--green);color:#fff;border-radius:10px;padding:3px 12px;
+    text-align:center;min-width:74px;
+  }
+  .stat b{display:block;font-size:1.05rem;font-weight:800;line-height:1.15}
+  .stat small{display:block;color:var(--lime);font-weight:600;font-size:.62rem;line-height:1.1}
+  .btn{
+    background:var(--lime);color:var(--green);border:0;border-radius:999px;
+    font:800 .85rem 'Nunito Sans',sans-serif;padding:8px 20px;cursor:pointer;
+    box-shadow:0 3px 0 #98ac1a;transition:.1s;white-space:nowrap;
+  }
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #98ac1a}
+
+  /* ---------- Bàn chơi: tự co giãn vừa khoảng trống còn lại ---------- */
+  .stage{flex:1;min-height:0;position:relative;margin:6px 12px 8px}
+  .board{
+    position:absolute;inset:0;display:grid;
+    justify-content:center;align-content:center;
+    gap:var(--gap);perspective:1200px;
+  }
+  .card{
+    position:relative;width:100%;height:100%;border:0;background:none;cursor:pointer;
+    transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,.2,.2,1);
+    border-radius:12px;
+  }
+  .card:focus-visible{outline:3px solid var(--lime);outline-offset:3px}
+  .card.flipped,.card.matched{transform:rotateY(180deg)}
+  .face{
+    position:absolute;inset:0;border-radius:12px;overflow:hidden;
+    backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .back{
+    background:
+      radial-gradient(circle at 20% 15%,rgba(191,215,48,.35),transparent 45%),
+      linear-gradient(145deg,var(--green),#04532d);
+    border:3px solid var(--lime);
+    box-shadow:0 3px 8px rgba(5,104,57,.25);
+  }
+  .back img{width:68%;height:auto}
+  .front{
+    transform:rotateY(180deg);background:#fff;border:3px solid var(--green);
+    box-shadow:0 3px 8px rgba(0,0,0,.12);
+  }
+  .front img{width:100%;height:100%;object-fit:cover;display:block}
+  .front .name{
+    position:absolute;left:0;right:0;bottom:0;padding:12px 4px 4px;text-align:center;
+    background:linear-gradient(transparent,rgba(5,104,57,.92));
+    color:#fff;font-weight:700;line-height:1.15;
+    font-size:max(9px,calc(var(--s,100px)*.085));
+  }
+  .card.matched .front{border-color:var(--lime);box-shadow:0 0 0 3px var(--lime),0 4px 12px rgba(191,215,48,.6)}
+  .card.matched{animation:pop .5s .45s}
+  @keyframes pop{50%{transform:rotateY(180deg) scale(1.07)}}
+  .card.wrong{animation:shake .4s}
+  @keyframes shake{25%{transform:rotateY(180deg) translateX(-6px)}75%{transform:rotateY(180deg) translateX(6px)}}
+
+  /* ---------- Chân trang ---------- */
+  footer{
+    flex:none;background:var(--green);color:#fff;padding:6px 16px;display:flex;
+    justify-content:space-between;align-items:center;gap:10px;font-size:.78rem;
+  }
+  footer b{color:var(--lime)}
+  footer a{color:#fff;font-weight:800;text-decoration:none}
+
+  /* ---------- Popup thắng ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(35,31,32,.6);display:none;
+    align-items:center;justify-content:center;padding:20px;z-index:10;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:#fff;border-radius:22px;max-width:380px;width:100%;text-align:center;
+    overflow:hidden;animation:rise .35s ease-out;
+  }
+  @keyframes rise{from{transform:translateY(30px);opacity:0}}
+  .modal .top{background:var(--green);padding:22px 16px 18px}
+  .modal .top h2{color:#fff;font-size:1.7rem;font-weight:800}
+  .modal .top p{color:var(--lime);font-weight:600;margin-top:2px}
+  .modal .body{padding:20px}
+  .res{display:flex;justify-content:center;gap:24px;margin-bottom:8px}
+  .res div b{display:block;font-size:1.7rem;font-weight:800;color:var(--green)}
+  .res div small{color:var(--muted);font-weight:600}
+  .best{color:var(--muted);font-size:.9rem;margin:6px 0 16px;min-height:1.2em}
+  .best strong{color:var(--green)}
+  .modal .btn{font-size:1rem;padding:12px 28px}
+
+  @media (max-width:560px){
+    :root{--gap:7px}
+    header img{height:28px}
+    .toolbar{padding:6px 10px 2px;gap:6px 10px}
+    h1{font-size:1rem}
+    .stat{min-width:64px;padding:2px 8px}
+    .stage{margin:4px 8px 6px}
+    footer span{display:none}
+    footer{justify-content:center}
+  }
+  @media (max-height:520px){
+    footer{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .card{transition:none}.card.matched,.card.wrong{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="images/logo-white.png" alt="Ecolar – Nông nghiệp xanh bền vững">
+  <span class="tag">MINI GAME</span>
+</header>
+
+<div class="toolbar">
+  <h1>LẬT HÌNH <span>TÌM CẶP GIỐNG NHAU</span></h1>
+  <div class="levels" role="group" aria-label="Chọn độ khó">
+    <button class="lvl" data-pairs="6" aria-pressed="false">Dễ · 6 cặp</button>
+    <button class="lvl" data-pairs="8" aria-pressed="true">Vừa · 8 cặp</button>
+    <button class="lvl" data-pairs="10" aria-pressed="false">Khó · 10 cặp</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="moves">0</b><small>Lượt lật</small></div>
+    <div class="stat"><b id="time">0:00</b><small>Thời gian</small></div>
+    <div class="stat"><b id="pairs">0/8</b><small>Cặp đã tìm</small></div>
+  </div>
+  <button class="btn" id="restart">Chơi lại</button>
+</div>
+
+<div class="stage" id="stage"><div class="board" id="board"></div></div>
+
+<footer>
+  <span><b>Ecolar</b> – Nông nghiệp xanh bền vững</span>
+  <a href="https://ecolar.vn" target="_blank" rel="noopener">Xem sản phẩm tại ecolar.vn →</a>
+</footer>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+  <div class="modal">
+    <div class="top"><h2 id="winTitle">Chúc mừng bạn! 🎉</h2><p>Bạn đã tìm đủ tất cả các cặp</p></div>
+    <div class="body">
+      <div class="res">
+        <div><b id="rMoves">0</b><small>Lượt lật</small></div>
+        <div><b id="rTime">0:00</b><small>Thời gian</small></div>
+      </div>
+      <p class="best" id="best"></p>
+      <button class="btn" id="again">Chơi lại</button>
+      <p style="margin-top:14px"><a href="https://ecolar.vn" target="_blank" rel="noopener" style="color:var(--green);font-weight:700">Khám phá sản phẩm Ecolar</a></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRODUCTS = [
+  {id:'logo',   name:'Logo Ecolar',                      img:'images/logo-card.jpg'},
+  {id:'combo',  name:'Combo Phân Bón Ecolar',            img:'images/combo-phan.jpg'},
+  {id:'dcdl1',  name:'Dòng Chảy Dịu Lành 1L',            img:'images/dcdl-1l.jpg'},
+  {id:'dcdl5',  name:'Dòng Chảy Dịu Lành 5L',            img:'images/dcdl-5l.jpg'},
+  {id:'dcdl20', name:'Dòng Chảy Dịu Lành 20L',           img:'images/dcdl-20l.jpg'},
+  {id:'md2',    name:'Mạch Đất 2kg',                     img:'images/machdat-2kg.jpg'},
+  {id:'md25',   name:'Mạch Đất 25kg',                    img:'images/machdat-25kg.jpg'},
+  {id:'ga',     name:'Gà Ai Cập Vằn',                    img:'images/ga-trong.jpg'},
+  {id:'buoi',   name:'Bưởi xanh',                        img:'images/buoi.jpg'},
+  {id:'dat',    name:'Đất · đa dạng sinh học',           img:'images/dat.jpg'}
+];
+
+const $ = id => document.getElementById(id);
+const board = $('board'), stage = $('stage');
+let pairsCount = 8, first = null, lock = false, moves = 0, found = 0;
+let timer = null, startAt = 0;
+
+const fmt = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+const bestKey = () => 'ecolar-memory-best-' + pairsCount;
+const getBest = () => { try { return JSON.parse(localStorage.getItem(bestKey())); } catch { return null; } };
+const setBest = v => { try { localStorage.setItem(bestKey(), JSON.stringify(v)); } catch {} };
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function stopTimer(){ clearInterval(timer); timer = null; }
+function tick(){ $('time').textContent = fmt(Math.floor((Date.now()-startAt)/1000)); }
+
+/* Chọn số cột sao cho thẻ to nhất mà vẫn nằm gọn trong khung, không cần cuộn trang */
+function layout(){
+  const n = pairsCount * 2;
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const gap = parseFloat(getComputedStyle(board).columnGap) || 10;
+  let best = 0, bestCols = 4;
+  for(let c = 2; c <= n; c++){
+    const r = Math.ceil(n / c);
+    const s = Math.min((W - (c-1)*gap) / c, (H - (r-1)*gap) / r);
+    if(s > best){ best = s; bestCols = c; }
+  }
+  const s = Math.max(40, Math.floor(Math.min(best, 260)));
+  board.style.setProperty('--s', s + 'px');
+  board.style.gridTemplateColumns = 'repeat(' + bestCols + ', ' + s + 'px)';
+  board.style.gridAutoRows = s + 'px';
+}
+
+function newGame(){
+  stopTimer();
+  first = null; lock = false; moves = 0; found = 0;
+  $('moves').textContent = 0;
+  $('time').textContent = '0:00';
+  $('pairs').textContent = '0/' + pairsCount;
+  $('overlay').classList.remove('show');
+  board.innerHTML = '';
+
+  const picked = shuffle(PRODUCTS.slice()).slice(0, pairsCount);
+  const deck = shuffle(picked.flatMap(p => [p, p]));
+  deck.forEach(p => {
+    const c = document.createElement('button');
+    c.className = 'card';
+    c.dataset.id = p.id;
+    c.setAttribute('aria-label', 'Thẻ úp');
+    c.innerHTML =
+      '<span class="face back"><img src="images/logo-white.png" alt=""></span>' +
+      '<span class="face front"><img src="' + p.img + '" alt="' + p.name + '"><span class="name">' + p.name + '</span></span>';
+    c.addEventListener('click', () => flip(c));
+    board.appendChild(c);
+  });
+  layout();
+}
+
+function flip(c){
+  if(lock || c.classList.contains('flipped') || c.classList.contains('matched')) return;
+  if(!timer){ startAt = Date.now(); timer = setInterval(tick, 500); }
+  c.classList.add('flipped');
+  c.setAttribute('aria-label', c.querySelector('.name').textContent);
+
+  if(!first){ first = c; return; }
+
+  moves++; $('moves').textContent = moves;
+  const a = first, b = c; first = null;
+
+  if(a.dataset.id === b.dataset.id){
+    a.classList.add('matched'); b.classList.add('matched');
+    found++; $('pairs').textContent = found + '/' + pairsCount;
+    if(found === pairsCount) setTimeout(win, 900);
+  } else {
+    lock = true;
+    setTimeout(() => {
+      a.classList.add('wrong'); b.classList.add('wrong');
+    }, 450);
+    setTimeout(() => {
+      [a,b].forEach(x => { x.classList.remove('flipped','wrong'); x.setAttribute('aria-label','Thẻ úp'); });
+      lock = false;
+    }, 950);
+  }
+}
+
+function win(){
+  stopTimer(); tick();
+  const secs = Math.floor((Date.now()-startAt)/1000);
+  $('rMoves').textContent = moves;
+  $('rTime').textContent = fmt(secs);
+  const prev = getBest();
+  const better = !prev || moves < prev.moves || (moves === prev.moves && secs < prev.secs);
+  if(better){
+    setBest({moves, secs});
+    $('best').innerHTML = prev ? '<strong>Kỷ lục mới!</strong> Bạn đã phá kỷ lục cũ.' : '<strong>Kỷ lục đầu tiên của bạn!</strong>';
+  } else {
+    $('best').innerHTML = 'Kỷ lục của bạn: <strong>' + prev.moves + ' lượt · ' + fmt(prev.secs) + '</strong>';
+  }
+  $('overlay').classList.add('show');
+  $('again').focus();
+}
+
+document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.lvl').forEach(x => x.setAttribute('aria-pressed', x === b));
+  pairsCount = +b.dataset.pairs;
+  newGame();
+}));
+$('restart').addEventListener('click', newGame);
+$('again').addEventListener('click', newGame);
+window.addEventListener('resize', layout);
+if(window.ResizeObserver) new ResizeObserver(layout).observe(stage);
+
+newGame();
+</script>
+</body>
+</html>
